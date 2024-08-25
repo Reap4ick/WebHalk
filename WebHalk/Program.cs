@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using WebHalk.Data;
@@ -10,10 +11,12 @@ builder.Services.AddAutoMapper(typeof(AppMapProfile));
 builder.Services.AddDbContext<HulkDbContext>(opt =>
     opt.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Add services to the container.
-builder.Services.AddControllersWithViews();
+// Додаємо Identity
+builder.Services.AddIdentity<IdentityUser, IdentityRole>()
+    .AddEntityFrameworkStores<HulkDbContext>()
+    .AddDefaultTokenProviders();
 
-builder.Services.AddAutoMapper(typeof(AppMapProfile));
+builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<DataSeeder>();
 
 var app = builder.Build();
@@ -31,7 +34,6 @@ if (!Directory.Exists(dirSave))
     Directory.CreateDirectory(dirSave);
 }
 
-
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(dirSave),
@@ -40,6 +42,8 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.UseRouting();
 
+// Додаємо Middleware для аутентифікації та авторизації
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(
@@ -49,10 +53,14 @@ app.MapControllerRoute(
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<HulkDbContext>();
-    //dbContext.Database.EnsureDeleted();
     dbContext.Database.Migrate();
     var seeder = scope.ServiceProvider.GetRequiredService<DataSeeder>();
     seeder.SeedProducts();
+
+    // Додаємо seed користувачів і ролей
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    seeder.SeedUsers(userManager, roleManager).Wait();
 }
 
 app.Run();

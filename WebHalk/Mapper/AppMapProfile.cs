@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using System.Globalization;
 using WebHalk.Data.Entities;
 using WebHalk.Models.Categories;
 using WebHalk.Models.Products;
@@ -11,16 +12,22 @@ namespace WebHalk.Mapper
         {
             CreateMap<CategoryEntity, CategoryItemViewModel>();
             CreateMap<CategoryEntity, CategoryEditViewModel>();
-
             CreateMap<ProductEntity, ProductItemViewModel>()
                 .ForMember(x => x.Images, opt => opt.MapFrom(x => x.ProductImages.Select(p => p.Image).ToArray()));
 
             CreateMap<ProductEntity, ProductEditViewModel>()
-                .ForMember(dest => dest.NewPhotos, opt => opt.Ignore()) // Якщо NewPhotos не використовується під час редагування
-                .ForMember(dest => dest.CategoryList, opt => opt.Ignore()); // Якщо CategoryList не використовується під час редагування
+                .ForMember(x => x.Images,
+                    opt => opt.MapFrom(src => src.ProductImages.Select(pi => new ProductImageViewModel
+                    {
+                        Id = pi.Id,
+                        Name = "/images/" + pi.Image,
+                        Priority = pi.Priotity
+                    }).ToList()))
+                .ForMember(x => x.Price, opt => opt.MapFrom(x => x.Price.ToString(new CultureInfo("uk-UA"))));
 
-            CreateMap<ProductCreateViewModel, ProductEntity>();
-            CreateMap<ProductEditViewModel, ProductEntity>();
+            CreateMap<ProductEditViewModel, ProductEntity>()
+                .ForMember(x => x.Id, opt => opt.Ignore())
+                .ForMember(x => x.Price, opt => opt.MapFrom(x => Decimal.Parse(x.Price, new CultureInfo("uk-UA"))));
         }
     }
 }

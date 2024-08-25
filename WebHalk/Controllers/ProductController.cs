@@ -1,7 +1,10 @@
 ﻿using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
+using System.Xml.Linq;
 using WebHalk.Data;
 using WebHalk.Data.Entities;
 using WebHalk.Models.Products;
@@ -10,20 +13,20 @@ namespace WebHalk.Controllers
 {
     public class ProductsController : Controller
     {
-        private readonly HulkDbContext _hulkDbContext;
+        private readonly HulkDbContext _context;
         private readonly IMapper _mapper;
 
-        public ProductsController(HulkDbContext hulkDbContext, IMapper mapper)
+        public ProductsController(HulkDbContext context, IMapper mapper)
         {
-            _hulkDbContext = hulkDbContext;
+            _context = context;
             _mapper = mapper;
         }
 
         public IActionResult Index()
         {
-            var list = _hulkDbContext.Products
-                .ProjectTo<ProductItemViewModel>(_mapper.ConfigurationProvider)
-                .ToList();
+            var list = _context.Products
+                  .ProjectTo<ProductItemViewModel>(_mapper.ConfigurationProvider)
+                  .ToList() ?? throw new Exception("Failed to get products");
 
             return View(list);
         }
@@ -31,11 +34,11 @@ namespace WebHalk.Controllers
         [HttpGet]
         public IActionResult Create()
         {
-            var categories = _hulkDbContext.Categories
+            var categories = _context.Categories
                 .Select(x => new { Value = x.Id, Text = x.Name })
                 .ToList();
 
-            var viewModel = new ProductCreateViewModel
+            ProductCreateViewModel viewModel = new()
             {
                 CategoryList = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(categories, "Value", "Text")
             };
@@ -43,154 +46,148 @@ namespace WebHalk.Controllers
             return View(viewModel);
         }
 
+
         [HttpPost]
         public async Task<IActionResult> Create(ProductCreateViewModel model)
         {
             if (!ModelState.IsValid)
                 return View(model);
 
-            // Створюємо новий продукт
-            var product = new ProductEntity
+            var prod = new ProductEntity
             {
                 Name = model.Name,
                 Price = model.Price,
                 CategoryId = model.CategoryId,
             };
 
-            // Додаємо продукт до бази даних
-            _hulkDbContext.Products.Add(product);
-            await _hulkDbContext.SaveChangesAsync();
-
-            // Додаємо фотографії
+            await _context.Products.AddAsync(prod);
+            await _context.SaveChangesAsync();
             if (model.Photos != null)
             {
-                foreach (var photo in model.Photos)
-                {
-                    string extension = Path.GetExtension(photo.FileName);
-                    string fileName = Guid.NewGuid().ToString() + extension;
-                    var path = Path.Combine(Directory.GetCurrentDirectory(), "images", fileName);
+                int i = 0;
 
+                foreach (var img in model.Photos)
+                {
+                    string ext = System.IO.Path.GetExtension(img.FileName);
+                    string fileName = Guid.NewGuid().ToString() + ext;
+                    var path = Path.Combine(Directory.GetCurrentDirectory(), "images", fileName);
                     using (var stream = new FileStream(path, FileMode.Create))
                     {
-                        await photo.CopyToAsync(stream);
+                        await img.CopyToAsync(stream);
                     }
-
-                    var photoEntity = new ProductImageEntity
+                    var imgEntity = new ProductImageEntity
                     {
                         Image = fileName,
-                        ProductId = product.Id,
+                        Priotity = i++,
+                        Product = prod,
                     };
-
-                    _hulkDbContext.ProductImages.Add(photoEntity);
+                    _context.ProductImages.Add(imgEntity);
+                    _context.SaveChanges();
                 }
-
-                await _hulkDbContext.SaveChangesAsync();
             }
 
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction("Index");
         }
 
         [HttpGet]
         public IActionResult Edit(int id)
         {
-            var product = _hulkDbContext.Products
-                .Where(p => p.Id == id)
+            var model = _context.Products
                 .ProjectTo<ProductEditViewModel>(_mapper.ConfigurationProvider)
-                .FirstOrDefault();
+                .FirstOrDefault(x => x.Id == id)
+                ?? throw new Exception("An error occurred while receiving the product");
 
-            if (product == null)
-            {
-                return NotFound();
-            }
+            var categories = _context.Categories
+                .Select(x => new { Value = x.Id, Text = x.Name })
+                .ToList();
 
-            // Отримуємо список категорій
-            product.CategoryList = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(
-                _hulkDbContext.Categories, "Id", "Name", product.CategoryId);
+            model.CategoryList = new SelectList(categories, "Value", "Text");
 
-            return View(product);
+            return View(model);
         }
+
+        //[HttpPost]
+        //public IActionResult Edit(ProductEditViewModel model)
+        //{
+
+        //    var categories = _context.Categories
+        //        .Select(x => new { Value = x.Id, Text = x.Name })
+        //        .ToList();
+
+        //    model.CategoryList = new SelectList(categories, "Value", "Text");
+
+        //    return View(model);
+        //}
 
         [HttpPost]
         public async Task<IActionResult> Edit(ProductEditViewModel model)
         {
             if (!ModelState.IsValid)
             {
-                model.CategoryList = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(
-                    _hulkDbContext.Categories, "Id", "Name", model.CategoryId);
+
+                var editProduct = _context.Products
+                    .ProjectTo<ProductEditViewModel>(_mapper.ConfigurationProvider)
+                    .FirstOrDefault(x => x.Id == model.Id)
+                    ?? throw new Exception("An error occurred while receiving the product");
+
+                var categories = _context.Categories
+                    .Select(x => new { Value = x.Id, Text = x.Name })
+                    .ToList();
+
+                model.CategoryList = new SelectList(categories, "Value", "Text");
+                model.Images = editProduct.Images;
+
                 return View(model);
             }
 
-            var product = await _hulkDbContext.Products.Include(p => p.ProductImages).FirstOrDefaultAsync(p => p.Id == model.Id);
-            if (product == null)
+
+
+            var product = await _context.Products
+                .FirstOrDefaultAsync(p => p.Id == model.Id)
+                ?? throw new Exception("No product was found");
+            _mapper.Map(model, product);
+
+            if (model.NewImages != null)
             {
-                return NotFound();
-            }
-
-            // Оновлюємо дані продукту
-            product.Name = model.Name;
-            product.Price = model.Price;
-            product.CategoryId = model.CategoryId;
-
-            // Видаляємо всі старі фотографії продукту
-            foreach (var image in product.ProductImages)
-            {
-                var path = Path.Combine(Directory.GetCurrentDirectory(), "images", image.Image);
-                if (System.IO.File.Exists(path)) System.IO.File.Delete(path);
-
-                _hulkDbContext.ProductImages.Remove(image);
-            }
-
-            // Додаємо нові фотографії
-            if (model.NewPhotos != null && model.NewPhotos.Any())
-            {
-                foreach (var photo in model.NewPhotos)
+                foreach (var img in model.NewImages)
                 {
-                    string extension = Path.GetExtension(photo.FileName);
-                    string fileName = Guid.NewGuid().ToString() + extension;
-                    var path = Path.Combine(Directory.GetCurrentDirectory(), "images", fileName);
-
-                    using (var stream = new FileStream(path, FileMode.Create))
+                    if (img.Length > 0)
                     {
-                        await photo.CopyToAsync(stream);
+                        string ext = Path.GetExtension(img.FileName);
+                        string fName = Guid.NewGuid().ToString() + ext;
+                        var path = Path.Combine(Directory.GetCurrentDirectory(), "images", fName);
+
+                        using (var fs = new FileStream(path, FileMode.Create))
+                            await img.CopyToAsync(fs);
+
+                        var imgEntity = new ProductImageEntity
+                        {
+                            Image = fName,
+                            Product = product
+                        };
+                        _context.ProductImages.Add(imgEntity);
                     }
-
-                    var photoEntity = new ProductImageEntity
-                    {
-                        Image = fileName,
-                        ProductId = product.Id,
-                    };
-
-                    _hulkDbContext.ProductImages.Add(photoEntity);
                 }
             }
 
-            await _hulkDbContext.SaveChangesAsync();
-
-            return RedirectToAction(nameof(Index));
-        }
-
-
-
-
-        [HttpPost]
-        public IActionResult Delete(int id)
-        {
-            var product = _hulkDbContext.Products.Include(p => p.ProductImages).FirstOrDefault(p => p.Id == id);
-            if (product == null) return NotFound();
-
-            // Видаляємо всі фотографії продукту
-            foreach (var image in product.ProductImages)
+            if (model.DeletedPhotoIds != null)
             {
-                var path = Path.Combine(Directory.GetCurrentDirectory(), "images", image.Image);
-                if (System.IO.File.Exists(path)) System.IO.File.Delete(path);
+                var photos = _context.ProductImages
+                    .Where(pi => model.DeletedPhotoIds.Contains(pi.Id))
+                    .ToList();
 
-                _hulkDbContext.ProductImages.Remove(image);
+                _context.ProductImages.RemoveRange(photos);
+
+                foreach (var photo in photos)
+                {
+                    var path = Path.Combine(Directory.GetCurrentDirectory(), "images", photo.Image);
+                    if (System.IO.File.Exists(path)) System.IO.File.Delete(path);
+                }
             }
-
-            _hulkDbContext.Products.Remove(product);
-            _hulkDbContext.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return RedirectToAction(nameof(Index));
         }
+
     }
 }

@@ -1,4 +1,5 @@
-﻿using WebHalk.Data.Entities;
+﻿using Microsoft.AspNetCore.Identity;
+using WebHalk.Data.Entities;
 using WebHalk.Data;
 
 namespace WebHalk.Services
@@ -11,6 +12,8 @@ namespace WebHalk.Services
         {
             _context = context;
         }
+
+        // Seed продуктів
         public void SeedProducts()
         {
             if (_context.Products.Count() == 0)
@@ -49,6 +52,35 @@ namespace WebHalk.Services
                     new ProductImageEntity { Image = "p_2(3).webp", Product = p2 }
                 );
                 _context.SaveChanges();
+            }
+        }
+
+        // Seed користувачів і ролей
+        public async Task SeedUsers(UserManager<IdentityUser> userManager, RoleManager<IdentityRole> roleManager)
+        {
+            string[] roles = { "Admin", "User" };
+
+            foreach (var role in roles)
+            {
+                if (!await roleManager.RoleExistsAsync(role))
+                {
+                    await roleManager.CreateAsync(new IdentityRole(role));
+                }
+            }
+
+            if (userManager.Users.All(u => u.UserName != "admin@example.com"))
+            {
+                var user = new IdentityUser
+                {
+                    UserName = "admin@example.com",
+                    Email = "admin@example.com"
+                };
+
+                var result = await userManager.CreateAsync(user, "Admin123!");
+                if (result.Succeeded)
+                {
+                    await userManager.AddToRoleAsync(user, "Admin");
+                }
             }
         }
     }

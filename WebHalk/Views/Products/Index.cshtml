@@ -6,11 +6,11 @@
     <div class="row">
         @foreach (var p in Model)
         {
-            <div class="col-lg-3 col-md-4 mb-4">
-                <div class="card h-100">
+            <div class="col-lg-3 col-md-3">
+                <div class="card mb-4">
                     @if (p.Images?.Count > 1)
                     {
-                        <div id="carousel-@p.Id" class="carousel slide">
+                        <div id="carousel-@p.Id" class="carousel slide m-3">
                             <div class="carousel-inner">
                                 @for (var i = 0; i < p.Images?.Count; i++)
                                 {
@@ -30,7 +30,7 @@
                     }
                     else
                     {
-                        <div class="one-img">
+                        <div class="one-img m-3">
                             <img src="@Url.Content("~/images/" + p.Images?.FirstOrDefault())" alt="@p.Name" />
                         </div>
                     }
@@ -40,36 +40,15 @@
                             const int MAX_LEN = 31;
                             var name = p.Name.Length > MAX_LEN ? p.Name.Substring(0, MAX_LEN) + "..." : p.Name;
                         }
-                        <h5 class="card-title">@name</h5>
+                        @name
                         <p class="card-text text-success">@p.Price.ToString("C")</p>
-
-                        <div class="d-flex justify-content-between mt-auto">
+                        <div class="d-flex justify-content-between">
                             <a asp-action="Edit" asp-route-id="@p.Id" class="btn btn-outline-secondary btn-sm">
-                                <i class="bi bi-pencil"></i> Редагувати
+                                <i class="bi bi-pencil"></i>
                             </a>
-                            <a href="#" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal-@p.Id">
-                                <i class="bi bi-trash"></i> Видалити
+                            <a asp-action="Delete" asp-route-id="@p.Id" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal-@p.Id">
+                                <i class="bi bi-trash"></i>
                             </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Видалення модального вікна -->
-            <div class="modal fade" id="deleteModal-@p.Id" tabindex="-1" aria-labelledby="deleteModalLabel-@p.Id" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="deleteModalLabel-@p.Id">Видалення продукту</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <p>Ви дійсно хочете видалити "@p.Name"?</p>
-                            <form method="post" action="@Url.Action("Delete")">
-                                <input type="hidden" name="id" value="@p.Id" />
-                                <button type="submit" class="btn btn-danger">Видалити</button>
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
-                            </form>
                         </div>
                     </div>
                 </div>
@@ -78,54 +57,45 @@
     </div>
 </div>
 
+
 <style>
     .card {
         width: 100%;
         max-width: 300px;
-        height: auto; /* Висота картки автоматична */
-        display: flex;
-        flex-direction: column;
+        height: 100%;
     }
 
     .carousel-inner img, .one-img img {
         max-width: 100%;
-        max-height: 250px; /* Висота зображень */
+        max-height: 100%;
         object-fit: contain;
+        display: flex;
+        align-items: center;
     }
 
     .carousel-inner {
-        height: 250px; /* Висота каруселі */
+        height: 250px;
+        display: flex;
+        align-items: center;
     }
 
     .one-img {
-        height: 250px; /* Висота зображення */
+        height: 250px;
         display: flex;
         align-items: center;
         justify-content: center;
     }
 
     .card-body {
-        flex: 1; /* Забезпечує, щоб картка заповнювала весь простір */
         display: flex;
         flex-direction: column;
         text-align: center;
     }
 
-    .card-title {
-        font-size: 1.1rem; /* Розмір шрифту заголовка */
-    }
-
     .carousel-control-prev-icon,
-    .carousel-control-next-icon {
+    .carousel-control-next-icon{
         background-color: gray;
-        border-radius: 50%;
+        border-radius: 20%;
     }
 
-    .btn {
-        margin: 0.5rem; /* Відступи для кнопок */
-    }
-
-    .modal-content {
-        border-radius: 0.5rem; /* Додає закруглення для модальних вікон */
-    }
 </style>
