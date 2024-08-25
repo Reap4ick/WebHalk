@@ -1,0 +1,151 @@
+﻿@model ProductCreateViewModel
+
+<div class="container col-md-4">
+    <h2 class="text-center my-4">Adding a new product</h2>
+
+    <form asp-action="Create" method="post" enctype="multipart/form-data">
+        <div class="form-group">
+            <label asp-for="Name" class="control-label"></label>
+            <input asp-for="Name" class="form-control" />
+            <span asp-validation-for="Name" class="text-danger"></span>
+        </div>
+
+        <div class="form-group my-2">
+            <label asp-for="Price" class="control-label"></label>
+            <input asp-for="Price" type="number" min="0" class="form-control" />
+            <span asp-validation-for="Price" class="text-danger"></span>
+        </div>
+
+        <div class="form-group">
+            <label asp-for="CategoryId"></label>
+            <select asp-for="CategoryId" asp-items="@Model.CategoryList" class="form-select"></select>
+            <span asp-validation-for="CategoryId" class="text-danger"></span>
+        </div>
+
+        <div class="form-group mt-3 mb-3">
+            <p class="text-primary text-center">Завантажити фото:</p>
+            <label id="selectImages">
+                <img class="img_upload" src="/img/input.png" width="120" alt="обрати фото" style="cursor:pointer" />
+            </label>
+            <input type="file" id="images" multiple class="form-control d-none" />
+            <div class="mt-3 d-flex justify-content-evenly flex-wrap" id="imageContainer"></div>
+        </div>
+
+        <div class="text-center mt-4">
+            <button type="submit" class="btn btn-secondary">Додати</button>
+        </div>
+
+    </form>
+</div>
+
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+
+    <script>
+
+        let id = 0;
+        const imageContainer = document.getElementById('imageContainer');
+
+        let selectImages = document.getElementById("selectImages");
+        selectImages.addEventListener("click", function () {
+            //Генеруємо id для фото
+            id = generateUniqueId();
+            var fileItem = document.createElement('input');
+            fileItem.type = 'file';
+            fileItem.classList.add('d-none')
+            fileItem.onchange = handleFileSelect;
+            fileItem.name = "photos";
+            fileItem.id = id;
+            imageContainer.appendChild(fileItem);
+            fileItem.click();
+        });
+        function handleFileSelect(event) {
+            const fileInput = event.target;
+
+            if (fileInput.files.length > 0) {
+
+                const imgContainer = document.createElement('div');
+                imgContainer.dataset.id = id; //зберігаю id input
+
+                imgContainer.classList.add('img_container');
+
+                const file = fileInput.files[0];
+
+                const imgElement = document.createElement('img');
+                imgElement.classList.add('img_preview');
+                imgElement.src = URL.createObjectURL(file);
+
+                const deleteButton = document.createElement('button');
+                deleteButton.innerText = 'X';
+                deleteButton.classList.add('img_preview-delete');
+                deleteButton.type = 'button';
+                deleteButton.addEventListener('click', function () {
+                    console.log("file input id ", imgContainer.dataset.id);
+                    document.getElementById(imgContainer.dataset.id).remove(); //видаляю також сам input file
+                    imageContainer.removeChild(imgContainer); //видаляємо сам контейр для однієї фото
+                });
+                imgContainer.appendChild(imgElement);
+                imgContainer.appendChild(deleteButton);
+                imageContainer.appendChild(imgContainer);
+
+            }
+        }
+
+        function generateUniqueId() {
+            // Create a timestamp-based part of the ID
+            const timestampPart = new Date().getTime().toString(16);
+
+            // Create a random number part of the ID
+            const randomPart = Math.floor(Math.random() * 1000000).toString(16);
+
+            // Concatenate the two parts to create a unique ID
+            const uniqueId = timestampPart + randomPart;
+
+            return uniqueId;
+        }
+    </script>
+}
+
+<style>
+    /* Основні стилі для контейнера зображень */
+    #imageContainer {
+        display: flex;
+        flex-wrap: wrap; /* Для того, щоб зображення переходили на новий ряд при заповненні поточного */
+        gap: 10px; /* Відстань між зображеннями */
+    }
+
+    /* Стилі для контейнера кожного зображення */
+    .img_container {
+        position: relative; /* Для правильного позиціонування кнопки видалення */
+        width: 150px; /* Ширина контейнера для зображення */
+        height: 150px; /* Висота контейнера для зображення */
+        overflow: hidden; /* Щоб вміст не виходив за межі контейнера */
+        border: 1px solid #ddd; /* Легке обведення для виділення */
+        border-radius: 4px; /* Скруглені кути */
+    }
+
+    /* Стилі для зображення */
+    .img_preview {
+        width: 100%; /* Ширина зображення 100% від ширини контейнера */
+        height: 100%; /* Висота зображення 100% від висоти контейнера */
+        object-fit: cover; /* Щоб зображення заповнювало контейнер без деформації */
+    }
+
+    /* Стилі для кнопки видалення */
+    .img_preview-delete {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background: rgba(0,0,0,0.5);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 14px;
+    }
+</style>
