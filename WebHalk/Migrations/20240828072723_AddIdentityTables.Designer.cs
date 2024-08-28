@@ -12,8 +12,8 @@ using WebHalk.Data;
 namespace WebHalk.Migrations
 {
     [DbContext(typeof(HulkDbContext))]
-    [Migration("20240824191732_AddIdentityAndSeedData")]
-    partial class AddIdentityAndSeedData
+    [Migration("20240828072723_AddIdentityTables")]
+    partial class AddIdentityTables
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

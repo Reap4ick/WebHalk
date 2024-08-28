@@ -1,4 +1,4 @@
-﻿﻿<header data-bs-theme="dark">
+﻿<header data-bs-theme="dark">
     <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
         <div class="container">
             <a class="navbar-brand" href="/">Дикі тварини</a>
@@ -13,14 +13,29 @@
                     <li class="nav-item">
                         <a class="nav-link" asp-action="Index" asp-controller="Products">Продукти</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link disabled" aria-disabled="true">Disabled</a>
-                    </li>
                 </ul>
-                <form class="d-flex" role="search">
-                    <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
-                    <button class="btn btn-outline-success" type="submit">Search</button>
-                </form>
+                <ul class="navbar-nav ms-auto mb-2 mb-md-0">
+                    @if (User.Identity.IsAuthenticated)
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link" asp-action="Profile" asp-controller="Account">Профіль</a>
+                        </li>
+                        <li class="nav-item">
+                            <form class="form-inline" asp-action="Logout" asp-controller="Account" method="post">
+                                <button type="submit" class="nav-link btn btn-link" style="text-decoration: none;">Вийти</button>
+                            </form>
+                        </li>
+                    }
+                    else
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link" asp-action="Login" asp-controller="Account">Вхід</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-action="Register" asp-controller="Account">Реєстрація</a>
+                        </li>
+                    }
+                </ul>
             </div>
         </div>
     </nav>

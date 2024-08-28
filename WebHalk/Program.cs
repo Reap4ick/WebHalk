@@ -11,7 +11,6 @@ builder.Services.AddAutoMapper(typeof(AppMapProfile));
 builder.Services.AddDbContext<HulkDbContext>(opt =>
     opt.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Додаємо Identity
 builder.Services.AddIdentity<IdentityUser, IdentityRole>()
     .AddEntityFrameworkStores<HulkDbContext>()
     .AddDefaultTokenProviders();
@@ -21,7 +20,6 @@ builder.Services.AddScoped<DataSeeder>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -41,8 +39,6 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 app.UseRouting();
-
-// Додаємо Middleware для аутентифікації та авторизації
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -57,7 +53,6 @@ using (var scope = app.Services.CreateScope())
     var seeder = scope.ServiceProvider.GetRequiredService<DataSeeder>();
     seeder.SeedProducts();
 
-    // Додаємо seed користувачів і ролей
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     seeder.SeedUsers(userManager, roleManager).Wait();
