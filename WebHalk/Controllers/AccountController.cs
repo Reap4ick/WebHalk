@@ -32,8 +32,7 @@ namespace WebHalk.Controllers
         {
             if (ModelState.IsValid)
             {
-                // Code to create the user and save to the database
-                // ...
+
                 var user = new UserEntity
                 {
                     FirstName = model.FirstName,
@@ -54,7 +53,6 @@ namespace WebHalk.Controllers
                 return RedirectToAction("Index", "Main");
             }
 
-            // If model state is not valid, return the view with the same model
             return View(model);
         }
 
@@ -117,6 +115,12 @@ namespace WebHalk.Controllers
             var model = _mapper.Map<ProfileViewModel>(user);
 
             return View(model);
+        }
+
+        [HttpGet]
+        public IActionResult AccessDenied()
+        {
+            return View();
         }
     }
 }

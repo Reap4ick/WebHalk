@@ -17,7 +17,7 @@ namespace WebHalk.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.8")
+                .HasAnnotation("ProductVersion", "7.0.20")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -101,14 +101,13 @@ namespace WebHalk.Migrations
 
                     b.Property<string>("Discriminator")
                         .IsRequired()
-                        .HasMaxLength(21)
-                        .HasColumnType("character varying(21)");
+                        .HasColumnType("text");
 
                     b.HasKey("UserId", "RoleId");
 
                     b.ToTable("AspNetUserRoles", (string)null);
 
-                    b.HasDiscriminator().HasValue("IdentityUserRole<int>");
+                    b.HasDiscriminator<string>("Discriminator").HasValue("IdentityUserRole<int>");
 
                     b.UseTphMappingStrategy();
                 });
@@ -209,6 +208,10 @@ namespace WebHalk.Migrations
                     b.Property<string>("FirstName")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Image")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("LastName")
                         .HasMaxLength(100)

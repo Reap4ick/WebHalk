@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
@@ -51,7 +52,6 @@ if (!Directory.Exists(dirSave))
     Directory.CreateDirectory(dirSave);
 }
 
-
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(dirSave),
@@ -64,14 +64,26 @@ app.UseCookiePolicy();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Main}/{action=Index}/{id?}");
+app.UseEndpoints(endpoints =>
+{
+    endpoints.MapAreaControllerRoute(
+        name: "admin_area",
+        areaName: "Admin",
+        pattern: "admin/{controller=Home}/{action=Index}/{id?}");
+
+    endpoints.MapControllerRoute(
+        name: "default",
+        pattern: "{controller=Main}/{action=Index}/{id?}");
+
+    endpoints.MapControllerRoute(
+      name: "access_denied",
+      pattern: "{controller=Account}/{action=AccessDenied}/{id?}");
+
+});
 
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<HulkDbContext>();
-    //dbContext.Database.EnsureDeleted();
     dbContext.Database.Migrate();
     var seeder = scope.ServiceProvider.GetRequiredService<DataSeeder>();
     seeder.SeedProducts();

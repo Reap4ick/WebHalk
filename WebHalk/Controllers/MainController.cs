@@ -30,7 +30,7 @@ namespace WebHalk.Controllers
                 .ToList();
             return View(list);
         }
-        [HttpGet]
+        /*[HttpGet]
         public IActionResult Create()
         {
             return View();
@@ -121,6 +121,8 @@ namespace WebHalk.Controllers
             _hulkDbContext.SaveChanges();
 
             return RedirectToAction(nameof(Index));
-        }
+        }*/
+
+
     }
 }
