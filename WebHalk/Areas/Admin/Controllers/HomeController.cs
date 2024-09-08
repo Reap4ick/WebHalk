@@ -68,10 +68,6 @@ namespace WebHalk.Areas.Admin.Controllers
         {
             return View();
         }
-        public IActionResult User()
-        {
-            return View();
-        }
 
     }
 }

@@ -1,16 +1,15 @@
 ﻿using AutoMapper;
-using AutoMapper.QueryableExtensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
-using WebHalk.Data;
 using WebHalk.Data.Entities;
+using WebHalk.Data;
+using AutoMapper.QueryableExtensions;
+using Microsoft.EntityFrameworkCore;
 using WebHalk.Areas.Admin.Models.Products;
 using Microsoft.AspNetCore.Authorization;
 using WebHalk.Constants;
-using WebHalk.Models.Products;
 
-namespace WebHalk.Areas.Admin.Controllers
+namespace WebHulk.Areas.Admin.Controllers
 {
     [Area("Admin")]
     [Authorize(Roles = Roles.Admin)]
@@ -25,17 +24,24 @@ namespace WebHalk.Areas.Admin.Controllers
             _mapper = mapper;
         }
 
-        public IActionResult Index()
+        public async Task<IActionResult> Index(string searchString, int pageNumber = 1, int pageSize = 10)
         {
-            var products = _context.Products
-                .ProjectTo<ProductAdminItemViewModel>(_mapper.ConfigurationProvider)
-                .ToList();
+            var query = _context.Products
+                .ProjectTo<ProductItemViewModel>(_mapper.ConfigurationProvider)
+                .AsQueryable();
 
-            if (products == null)
-                throw new Exception("Failed to get products");
+            // Пошук по назві товару
+            if (!string.IsNullOrEmpty(searchString))
+            {
+                query = query.Where(p => p.Name.Contains(searchString));
+            }
 
-            return View(products);
+            // Пагінація
+            var paginatedList = await PaginatedList<ProductItemViewModel>.CreateAsync(query, pageNumber, pageSize);
+
+            return View(paginatedList);
         }
+
 
         [HttpGet]
         public IActionResult Create()
@@ -44,7 +50,7 @@ namespace WebHalk.Areas.Admin.Controllers
                 .Select(x => new { Value = x.Id, Text = x.Name })
                 .ToList();
 
-            var viewModel = new ProductAdminCreateViewModel
+            ProductCreateViewModel viewModel = new()
             {
                 CategoryList = new SelectList(categories, "Value", "Text")
             };
@@ -53,42 +59,43 @@ namespace WebHalk.Areas.Admin.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create(ProductAdminCreateViewModel model)
+        public async Task<IActionResult> Create(ProductCreateViewModel model)
         {
             if (!ModelState.IsValid)
                 return View(model);
 
-            var product = new ProductEntity
+            var prod = new ProductEntity
             {
                 Name = model.Name,
                 Price = model.Price,
-                CategoryId = model.CategoryId
+                CategoryId = model.CategoryId,
             };
 
-            await _context.Products.AddAsync(product);
+            await _context.Products.AddAsync(prod);
             await _context.SaveChangesAsync();
 
             if (model.Photos != null)
             {
-                foreach (var photo in model.Photos)
+                int i = 0;
+                foreach (var img in model.Photos)
                 {
-                    var fileName = Guid.NewGuid().ToString() + Path.GetExtension(photo.FileName);
-                    var filePath = Path.Combine(Directory.GetCurrentDirectory(), "images", fileName);
+                    string ext = Path.GetExtension(img.FileName);
 
-                    using (var stream = new FileStream(filePath, FileMode.Create))
-                    {
-                        await photo.CopyToAsync(stream);
-                    }
+                    string fName = Guid.NewGuid().ToString() + ext;
+                    var path = Path.Combine(Directory.GetCurrentDirectory(), "images", fName);
 
-                    var productImage = new ProductImageEntity
+                    using (var fs = new FileStream(path, FileMode.Create))
+                        await img.CopyToAsync(fs);
+
+                    var imgEntity = new ProductImageEntity
                     {
-                        Image = fileName,
-                        Product = product
+                        Image = fName,
+                        Priotity = i++,
+                        Product = prod,
                     };
-
-                    _context.ProductImages.Add(productImage);
+                    _context.ProductImages.Add(imgEntity);
+                    _context.SaveChanges();
                 }
-                await _context.SaveChangesAsync();
             }
 
             return RedirectToAction(nameof(Index));
@@ -98,7 +105,7 @@ namespace WebHalk.Areas.Admin.Controllers
         public IActionResult Edit(int id)
         {
             var model = _context.Products
-                .ProjectTo<ProductAdminEditViewModel>(_mapper.ConfigurationProvider)
+                .ProjectTo<ProductEditViewModel>(_mapper.ConfigurationProvider)
                 .FirstOrDefault(x => x.Id == id)
                 ?? throw new Exception("An error occurred while receiving the product");
 
@@ -111,25 +118,12 @@ namespace WebHalk.Areas.Admin.Controllers
             return View(model);
         }
 
+
         [HttpPost]
-        public async Task<IActionResult> Edit(ProductAdminEditViewModel model)
+        public async Task<IActionResult> Edit(ProductEditViewModel model)
         {
             if (!ModelState.IsValid)
-            {
-                var editProduct = _context.Products
-                    .ProjectTo<ProductAdminEditViewModel>(_mapper.ConfigurationProvider)
-                    .FirstOrDefault(x => x.Id == model.Id)
-                    ?? throw new Exception("An error occurred while receiving the product");
-
-                var categories = _context.Categories
-                    .Select(x => new { Value = x.Id, Text = x.Name })
-                    .ToList();
-
-                model.CategoryList = new SelectList(categories, "Value", "Text");
-                model.Images = editProduct.Images;
-
                 return View(model);
-            }
 
             var product = await _context.Products
                 .FirstOrDefaultAsync(p => p.Id == model.Id)
@@ -174,6 +168,28 @@ namespace WebHalk.Areas.Admin.Controllers
                     if (System.IO.File.Exists(path)) System.IO.File.Delete(path);
                 }
             }
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction(nameof(Index));
+        }
+
+
+        [HttpPost]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var product = await _context.Products
+                .Include(p => p.ProductImages)
+                .SingleOrDefaultAsync(p => p.Id == id) ?? throw new InvalidDataException("Product not found");
+
+            foreach (var img in product.ProductImages)
+            {
+                var path = Path.Combine(Directory.GetCurrentDirectory(), "images", img.Image);
+
+                if (System.IO.File.Exists(path)) System.IO.File.Delete(path);
+            }
+
+            _context.ProductImages.RemoveRange(product.ProductImages);
+            _context.Products.Remove(product);
             await _context.SaveChangesAsync();
 
             return RedirectToAction(nameof(Index));

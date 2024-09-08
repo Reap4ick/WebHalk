@@ -31,33 +31,29 @@ namespace WebHalk.Services
                 _context.Categories.Add(c1);
                 _context.SaveChanges();
 
-                var p1 = new ProductEntity
+                for (int i = 1; i <= 100; i++)
                 {
-                    Name = "Ноутбук HP EliteBook 840 G10",
-                    Category = c1,
-                    Price = 2350.00m
-                };
+                    var product = new ProductEntity
+                    {
+                        Name = $"Ноутбук {i}",  // Назва буде генеруватись автоматично
+                        Category = c1,
+                        Price = 2000 + i * 10  // Генерування різних цін для кожного продукту
+                    };
 
-                var p2 = new ProductEntity
-                {
-                    Name = "Ноутбук Dell Latitude 7640",
-                    Category = c1,
-                    Price = 2020.00m
-                };
+                    _context.Products.Add(product);
 
-                _context.Products.AddRange(p1, p2);
-                _context.ProductImages.AddRange(
-                    new ProductImageEntity { Image = "p_1(1).webp", Product = p1 },
-                    new ProductImageEntity { Image = "p_1(2).webp", Product = p1 },
-                    new ProductImageEntity { Image = "p_1(3).webp", Product = p1 },
+                    // Додавання кількох зображень для кожного продукту
+                    _context.ProductImages.AddRange(
+                        new ProductImageEntity { Image = $"p_{i}(1).webp", Product = product },
+                        new ProductImageEntity { Image = $"p_{i}(2).webp", Product = product },
+                        new ProductImageEntity { Image = $"p_{i}(3).webp", Product = product }
+                    );
+                }
 
-                    new ProductImageEntity { Image = "p_2(1).webp", Product = p2 },
-                    new ProductImageEntity { Image = "p_2(2).webp", Product = p2 },
-                    new ProductImageEntity { Image = "p_2(3).webp", Product = p2 }
-                );
                 _context.SaveChanges();
             }
         }
+
 
         public void SeedRolesAndUsers()
         {

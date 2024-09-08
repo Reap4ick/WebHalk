@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace WebHalk.Models.Categories
+namespace WebHalk.Areas.Admin.Models.Category
 {
     public class CategoryEditViewModel
     {
@@ -8,7 +8,7 @@ namespace WebHalk.Models.Categories
         public string Name { get; set; } = string.Empty;
         public string? Image { get; set; }
 
-        [Display(Name = "Оберіть фото на ПК")]
+        [Display(Name = "Choose an image from the PC")]
         public IFormFile? NewImage { get; set; }
     }
 }
