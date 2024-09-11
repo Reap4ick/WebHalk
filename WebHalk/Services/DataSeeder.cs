@@ -3,6 +3,9 @@ using WebHalk.Data;
 using Microsoft.AspNetCore.Identity;
 using WebHalk.Data.Entities.Identity;
 using WebHalk.Constants;
+using Bogus;
+using static System.Net.WebRequestMethods;
+using WebHalk.Interfaces;
 
 namespace WebHalk.Services
 {
@@ -11,49 +14,74 @@ namespace WebHalk.Services
         private readonly HulkDbContext _context;
         private readonly UserManager<UserEntity> _userManager;
         private readonly RoleManager<RoleEntity> _roleManager;
+        private readonly IImageWorker _imageWorker;
 
-        public DataSeeder(HulkDbContext context, UserManager<UserEntity> userManager, RoleManager<RoleEntity> roleManager)
+        public DataSeeder(HulkDbContext context, UserManager<UserEntity> userManager,
+            IImageWorker imageWorker,
+            RoleManager<RoleEntity> roleManager)
         {
             _context = context;
             _userManager = userManager;
             _roleManager = roleManager;
+            _imageWorker = imageWorker;
         }
         public void SeedProducts()
         {
             if (_context.Products.Count() == 0)
             {
-                var c1 = new CategoryEntity
+                int number = 10;
+                var listCategories = new Faker("uk") // Specify Ukrainian locale (optional)
+                        .Commerce.Categories(number);
+                string url = "https://picsum.photos/1200/800?category";
+                foreach (var categoryName in listCategories)
                 {
-                    Name = "Laptops",
-                    Image = "eb47fa37-007c-4d3e-be5e-a5ccb7600320.jpg"
-                };
-
-                _context.Categories.Add(c1);
-                _context.SaveChanges();
-
-                for (int i = 1; i <= 100; i++)
-                {
-                    var product = new ProductEntity
+                    var imgName = _imageWorker.ImageSave(url);
+                    if (!String.IsNullOrEmpty(imgName))
                     {
-                        Name = $"Ноутбук {i}",  // Назва буде генеруватись автоматично
-                        Category = c1,
-                        Price = 2000 + i * 10  // Генерування різних цін для кожного продукту
-                    };
+                        var catEntity = new CategoryEntity
+                        {
+                            Name = categoryName,
+                            Image = imgName,
+                        };
+                        _context.Add(catEntity);
+                        _context.SaveChanges();
+                    }
 
-                    _context.Products.Add(product);
-
-                    // Додавання кількох зображень для кожного продукту
-                    _context.ProductImages.AddRange(
-                        new ProductImageEntity { Image = $"p_{i}(1).webp", Product = product },
-                        new ProductImageEntity { Image = $"p_{i}(2).webp", Product = product },
-                        new ProductImageEntity { Image = $"p_{i}(3).webp", Product = product }
-                    );
                 }
 
-                _context.SaveChanges();
+                var categories = _context.Categories.ToList();
+
+                var fakerProduct = new Faker<ProductEntity>("uk")
+                    .RuleFor(u => u.Name, (f, u) => f.Commerce.Product())
+                    .RuleFor(u => u.Price, (f, u) => decimal.Parse(f.Commerce.Price()))
+                    .RuleFor(u => u.Category, (f, u) => f.PickRandom(categories));
+
+                url = "https://picsum.photos/1200/800?product";
+
+                var products = fakerProduct.GenerateLazy(1000);
+                Random r = new Random();
+
+                foreach (var product in products)
+                {
+                    _context.Add(product);
+                    _context.SaveChanges();
+                    int imageCount = r.Next(3, 5);
+                    for (int i = 0; i < imageCount; i++)
+                    {
+                        var imageName = _imageWorker.ImageSave(url);
+                        var imageProduct = new ProductImageEntity
+                        {
+                            Product = product,
+                            Image = imageName,
+                            Priotity = i
+                        };
+                        _context.Add(imageProduct);
+                        _context.SaveChanges();
+                    }
+
+                }
             }
         }
-
 
         public void SeedRolesAndUsers()
         {

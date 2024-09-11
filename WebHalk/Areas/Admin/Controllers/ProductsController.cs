@@ -8,8 +8,9 @@ using Microsoft.EntityFrameworkCore;
 using WebHalk.Areas.Admin.Models.Products;
 using Microsoft.AspNetCore.Authorization;
 using WebHalk.Constants;
+using WebHalk.Areas.Admin.Models.Category;
 
-namespace WebHulk.Areas.Admin.Controllers
+namespace WebHalk.Areas.Admin.Controllers
 {
     [Area("Admin")]
     [Authorize(Roles = Roles.Admin)]
@@ -24,24 +25,63 @@ namespace WebHulk.Areas.Admin.Controllers
             _mapper = mapper;
         }
 
-        public async Task<IActionResult> Index(string searchString, int pageNumber = 1, int pageSize = 10)
+        public IActionResult Index(string searchString, string categoryFilter, int pageSize = 10, int pageNumber = 1)
         {
-            var query = _context.Products
-                .ProjectTo<ProductItemViewModel>(_mapper.ConfigurationProvider)
-                .AsQueryable();
+            var products = _context.Products.AsQueryable();
 
-            // Пошук по назві товару
             if (!string.IsNullOrEmpty(searchString))
             {
-                query = query.Where(p => p.Name.Contains(searchString));
+                products = products.Where(p => p.Name.Contains(searchString));
             }
 
-            // Пагінація
-            var paginatedList = await PaginatedList<ProductItemViewModel>.CreateAsync(query, pageNumber, pageSize);
+            if (!string.IsNullOrEmpty(categoryFilter))
+            {
+                int categoryId;
+                if (int.TryParse(categoryFilter, out categoryId))
+                {
+                    products = products.Where(p => p.CategoryId == categoryId);
+                }
+            }
 
-            return View(paginatedList);
+            var totalItems = products.Count();
+            var paginatedProducts = products
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            var model = new PaginatedList<ProductItemViewModel>(
+                paginatedProducts.Select(p => new ProductItemViewModel
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Price = p.Price
+                }).ToList(),
+                totalItems,
+                pageNumber,
+                pageSize
+            );
+
+            ViewData["Categories"] = GetCategories(); // Передаємо категорії у ViewData
+            ViewData["SearchString"] = searchString;
+            ViewData["CategoryFilter"] = categoryFilter;
+            ViewData["PageSize"] = pageSize;
+
+            return View(model);
         }
 
+
+
+
+        private IEnumerable<CategoryItemViewModel> GetCategories()
+        {
+            return _context.Categories
+                .Select(c => new CategoryItemViewModel
+                {
+                    Id = c.Id,
+                    Name = c.Name
+                })
+                .ToList();
+        }
 
         [HttpGet]
         public IActionResult Create()
@@ -94,7 +134,7 @@ namespace WebHulk.Areas.Admin.Controllers
                         Product = prod,
                     };
                     _context.ProductImages.Add(imgEntity);
-                    _context.SaveChanges();
+                    await _context.SaveChangesAsync(); // Use await here
                 }
             }
 
@@ -117,7 +157,6 @@ namespace WebHulk.Areas.Admin.Controllers
 
             return View(model);
         }
-
 
         [HttpPost]
         public async Task<IActionResult> Edit(ProductEditViewModel model)
@@ -172,7 +211,6 @@ namespace WebHulk.Areas.Admin.Controllers
 
             return RedirectToAction(nameof(Index));
         }
-
 
         [HttpPost]
         public async Task<IActionResult> Delete(int id)

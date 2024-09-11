@@ -4,8 +4,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using WebHalk.Data;
 using WebHalk.Data.Entities.Identity;
+using WebHalk.Interfaces;
 using WebHalk.Mapper;
 using WebHalk.Services;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +19,7 @@ builder.Services.AddControllersWithViews();
 
 builder.Services.AddAutoMapper(typeof(AppMapProfile));
 builder.Services.AddScoped<DataSeeder>();
+builder.Services.AddScoped<IImageWorker, ImageWorker>();
 
 // Identity options
 builder.Services.AddIdentity<UserEntity, RoleEntity>(options =>
@@ -34,6 +37,8 @@ builder.Services.AddIdentity<UserEntity, RoleEntity>(options =>
 
     //options.SignIn.RequireConfirmedEmail = true;
 })
+
+
     .AddEntityFrameworkStores<HulkDbContext>()
     .AddDefaultTokenProviders();
 
