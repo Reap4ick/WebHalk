@@ -1,0 +1,112 @@
+﻿@* @model ProductHomeViewModel
+
+@if (Model.Pagination != null)
+{
+    <nav aria-label="Page navigation example">
+        <ul class="pagination">
+            <li class="page-item"><a class="page-link" href="#">Previous</a></li>
+            @for (int page = 1; page < Model.Pagination.TotalPages; page++)
+            {
+
+                <li class="page-item">
+                    <a class="page-link" href="@Url.Action("Index", new { page, name = Model.Search.Name, categoryId = Model.Search.CategoryId })">@(page)</a>
+                </li>
+            }
+            <li class="page-item"><a class="page-link" href="#">Next</a></li>
+        </ul>
+    </nav>
+
+}
+ *@
+
+
+
+@model ProductHomeViewModel
+
+<style>
+    .pagination {
+        display: flex;
+        justify-content: center;
+        padding: 0;
+    }
+
+    .page-item {
+        margin: 0 5px;
+    }
+
+    .page-link {
+        padding: 8px 16px;
+        text-decoration: none;
+        color: #007bff;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+
+    .page-item.active .page-link {
+        background-color: #007bff;
+        color: white;
+        border: 1px solid #007bff;
+    }
+
+    .page-item.disabled .page-link {
+        color: #6c757d;
+        pointer-events: none;
+    }
+
+    .page-item .page-link:hover {
+        background-color: #e9ecef;
+    }
+</style>
+
+@if (Model.Pagination != null)
+{
+    <nav aria-label="Page navigation example">
+        <ul class="pagination">
+            <!-- Previous Button -->
+            <li class="page-item @(Model.Pagination.CurrentPage == 1 ? "disabled" : "")">
+                <a class="page-link" href="@Url.Action("Index", new { page = Model.Pagination.CurrentPage - 1, name = Model.Search.Name, categoryId = Model.Search.CategoryId })">Previous</a>
+            </li>
+
+            <!-- Dynamic Page Buttons -->
+            @if (Model.Pagination.TotalPages > 1)
+            {
+                <!-- Always show the first page -->
+                <li class="page-item @(Model.Pagination.CurrentPage == 1 ? "active" : "")">
+                    <a class="page-link" href="@Url.Action("Index", new { page = 1, name = Model.Search.Name, categoryId = Model.Search.CategoryId })">1</a>
+                </li>
+
+                @if (Model.Pagination.CurrentPage > 4)
+                {
+                    <!-- Show ellipsis if current page is far from the first page -->
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                }
+
+                @for (int page = Math.Max(2, Model.Pagination.CurrentPage - 2); page <= Math.Min(Model.Pagination.TotalPages - 1, Model.Pagination.CurrentPage + 2); page++)
+                {
+                    <li class="page-item @(page == Model.Pagination.CurrentPage ? "active" : "")">
+                        <a class="page-link" href="@Url.Action("Index", new { page, name = Model.Search.Name, categoryId = Model.Search.CategoryId })">@(page)</a>
+                    </li>
+                }
+
+                @if (Model.Pagination.CurrentPage < Model.Pagination.TotalPages - 3)
+                {
+                    <!-- Show ellipsis if current page is far from the last page -->
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                }
+
+                <!-- Always show the last page -->
+                <li class="page-item @(Model.Pagination.CurrentPage == Model.Pagination.TotalPages ? "active" : "")">
+                    <a class="page-link" href="@Url.Action("Index", new { page = Model.Pagination.TotalPages, name = Model.Search.Name, categoryId = Model.Search.CategoryId })">@(Model.Pagination.TotalPages)</a>
+                </li>
+            }
+
+            <!-- Next Button -->
+            <li class="page-item @(Model.Pagination.CurrentPage == Model.Pagination.TotalPages ? "disabled" : "")">
+                <a class="page-link" href="@Url.Action("Index", new { page = Model.Pagination.CurrentPage + 1, name = Model.Search.Name, categoryId = Model.Search.CategoryId })">Next</a>
+            </li>
+        </ul>
+    </nav>
+}
+
+
+

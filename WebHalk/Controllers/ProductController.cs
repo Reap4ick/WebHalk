@@ -1,35 +1,76 @@
 ﻿using AutoMapper;
-using AutoMapper.QueryableExtensions;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
-using System.Text.Json;
-using System.Xml.Linq;
+using Microsoft.AspNetCore.Mvc;
+using System.Diagnostics;
 using WebHalk.Data;
-using WebHalk.Data.Entities;
 using WebHalk.Models.Products;
+using AutoMapper.QueryableExtensions;
 
-namespace WebHalk.Controllers
+public class ProductsController : Controller
 {
-    public class ProductsController : Controller
+    private readonly HulkDbContext _context;
+    private readonly IMapper _mapper;
+
+    public ProductsController(HulkDbContext context, IMapper mapper)
     {
-        private readonly HulkDbContext _context;
-        private readonly IMapper _mapper;
+        _context = context;
+        _mapper = mapper;
+    }
 
-        public ProductsController(HulkDbContext context, IMapper mapper)
+    public IActionResult Index(ProductSearchViewModel search)
+    {
+        Stopwatch stopWatch = new Stopwatch();
+        stopWatch.Start();
+
+        var query = _context.Products.AsQueryable();
+
+        if (!string.IsNullOrEmpty(search.Name))
+            query = query.Where(x => x.Name.ToLower().Contains(search.Name.ToLower()));
+
+        int count = query.Count();
+        int page = search.Page ?? 1;
+        int pageSize = search.PageSize;
+
+        query = query.OrderBy(x => x.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize);
+
+        var list = query
+              .ProjectTo<ProductItemViewModel>(_mapper.ConfigurationProvider)
+              .ToList();
+
+        stopWatch.Stop();
+        TimeSpan ts = stopWatch.Elapsed;
+        string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
+            ts.Hours, ts.Minutes, ts.Seconds,
+            ts.Milliseconds / 10);
+
+        // Get categories for the search dropdown
+        var categories = _context.Categories.Select(c => new SelectListItem
         {
-            _context = context;
-            _mapper = mapper;
-        }
+            Value = c.Id.ToString(),
+            Text = c.Name
+        }).ToList();
 
-        public IActionResult Index()
+        search.Categories = categories;
+
+        var model = new ProductHomeViewModel
         {
-            var list = _context.Products
-                  .ProjectTo<ProductItemViewModel>(_mapper.ConfigurationProvider)
-                  .ToList() ?? throw new Exception("Failed to get products");
+            Search = search,
+            Products = list,
+            Count = count,
+            Pagination = new PaginationViewModel
+            {
+                PageSize = pageSize,
+                TotalItems = count,
+                CurrentPage = page,
+            }
+        };
 
-            return View(list);
-        }
+        // Use ILogger for logging
+        var logger = LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<ProductsController>();
+        logger.LogInformation("RunTime ProductsController Index: " + elapsedTime);
 
+        return View(model);
     }
 }
